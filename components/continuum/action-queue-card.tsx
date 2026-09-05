@@ -2,14 +2,13 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { FileTextIcon, RotateCcwIcon, ShieldAlertIcon } from 'lucide-react'
+import { FileTextIcon, ShieldAlertIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RecommendationWithClient } from '@/services/recommendations'
 import { toActionStatus, toPriorityBadge, toCategoryLabel } from '@/lib/recommendation-display'
 import { Button } from '@/components/ui/button'
 import { PriorityBadge } from './priority-badge'
 import { ActionReviewDrawer } from './action-review-drawer'
-import { transitionAction } from '@/app/actions/actions'
 import type { ActionStatus } from '@/lib/data'
 
 const statusStyles: Record<ActionStatus, string> = {
@@ -70,16 +69,7 @@ function MetricPieChart({ title }: { title: string }) {
 
 export function ActionQueueCard({ recommendation }: { recommendation: RecommendationWithClient }) {
   const [open, setOpen] = React.useState(false)
-  const [pending, startTransition] = React.useTransition()
   const status = toActionStatus(recommendation.status)
-  const editable = status === 'Awaiting Review'
-  const isDeferred = recommendation.status === 'DEFERRED'
-
-  function decide(eventType: 'APPROVED' | 'CLIENT_DEFERRED' | 'RESURFACED') {
-    startTransition(async () => {
-      await transitionAction(recommendation.id, eventType)
-    })
-  }
 
   return (
     <>
@@ -127,27 +117,9 @@ export function ActionQueueCard({ recommendation }: { recommendation: Recommenda
           <p className="text-xs text-muted-foreground">
             Created {new Date(recommendation.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
           </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-              Review
-            </Button>
-            {editable ? (
-              <>
-                <Button size="sm" onClick={() => decide('APPROVED')} disabled={pending}>
-                  Approve
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => decide('CLIENT_DEFERRED')} disabled={pending}>
-                  Defer
-                </Button>
-              </>
-            ) : null}
-            {isDeferred ? (
-              <Button size="sm" onClick={() => decide('RESURFACED')} disabled={pending}>
-                <RotateCcwIcon data-icon="inline-start" />
-                Resurface
-              </Button>
-            ) : null}
-          </div>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Review Action
+          </Button>
         </div>
       </article>
 

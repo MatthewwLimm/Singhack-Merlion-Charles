@@ -5,15 +5,13 @@ import {
   CheckCircle2, 
   ShieldAlert, 
   SlidersHorizontal,
-  Calendar,
   Sparkles
 } from 'lucide-react'
 import { PriorityClientCard } from '@/components/continuum/priority-client-card'
-import { MeetingList, FollowUpList } from '@/components/continuum/today-panel'
 import { PageHeader } from '@/components/continuum/page-header'
 import { cn } from '@/lib/utils'
 import type { PriorityClient } from '@/lib/data'
-import { toAdviceStatus, formatDate } from '@/lib/recommendation-display'
+import { toAdviceStatus } from '@/lib/recommendation-display'
 import { getCockpitClients } from '@/services/cockpit'
 import { listRecommendations } from '@/services/recommendations'
 
@@ -96,16 +94,6 @@ export default async function MorningCockpitPage() {
       badgeBg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
     },
   ]
-
-  const followUps = recommendations
-    .filter((r) => r.status === 'DEFERRED')
-    .slice(0, 6)
-    .map((r) => ({
-      client: r.client_name,
-      note: 'Deferred advice',
-      detail: `“${r.title}” · deferred ${formatDate(r.updated_at)}`,
-      due: 'Revisit',
-    }))
 
   const timeSensitive = cockpitClients.filter((c) => c.priority === 'ACTION REQUIRED').length
   const rmName = cockpitClients[0]?.client.rm_name?.split(' ')[0] ?? 'there'
@@ -195,51 +183,36 @@ export default async function MorningCockpitPage() {
         </div>
       </div>
 
-      {/* Main Grid: Priority Feed + Sidebar */}
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <section aria-labelledby="feed-heading" className="flex flex-col gap-4">
-          <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal className="size-4 text-muted-foreground" />
-              <h2 id="feed-heading" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Priority Client Feed
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Ranked by deterministic risk signals & deferred advice
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            {priorityClients.length ? (
-              priorityClients.map((client, i) => (
-                <PriorityClientCard key={client.id} client={client} rank={i + 1} />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card py-12 text-center shadow-sm">
-                <Sparkles className="mb-2 size-8 text-emerald-500" />
-                <p className="text-base font-semibold text-foreground">All Client Portfolios are Healthy</p>
-                <p className="text-xs text-muted-foreground max-w-md mt-1">
-                  Every client is currently within mandate, credit, and liquidity tolerances. No open risk signals right now.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Sidebar */}
-        <aside aria-label="Today" className="flex flex-col gap-5 xl:sticky xl:top-20 xl:self-start">
-          <div className="flex items-center justify-between border-b pb-3">
-            <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
-              <Calendar className="size-4 text-muted-foreground" />
-              Today's Schedule
+      {/* Full-width Priority Client Feed */}
+      <section aria-labelledby="feed-heading" className="flex flex-col gap-4">
+        <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="size-4 text-muted-foreground" />
+            <h2 id="feed-heading" className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Priority Client Feed
             </h2>
           </div>
-          
-          <MeetingList meetings={[]} />
-          <FollowUpList followUps={followUps} />
-        </aside>
-      </div>
+          <p className="text-xs text-muted-foreground">
+            Ranked by deterministic risk signals & deferred advice
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {priorityClients.length ? (
+            priorityClients.map((client, i) => (
+              <PriorityClientCard key={client.id} client={client} rank={i + 1} />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card py-12 text-center shadow-sm">
+              <Sparkles className="mb-2 size-8 text-emerald-500" />
+              <p className="text-base font-semibold text-foreground">All Client Portfolios are Healthy</p>
+              <p className="text-xs text-muted-foreground max-w-md mt-1">
+                Every client is currently within mandate, credit, and liquidity tolerances. No open risk signals right now.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   )
 }

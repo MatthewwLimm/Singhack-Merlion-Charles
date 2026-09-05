@@ -1,11 +1,10 @@
 import { notFound } from 'next/navigation'
 import { ClientHeader } from '@/components/continuum/client-header'
 import { InsightPanel } from '@/components/continuum/insight-panel'
-import { RecommendationPanel } from '@/components/continuum/recommendation-panel'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { OverviewTab } from '@/components/continuum/client-tabs/overview-tab'
 import { PortfolioTab } from '@/components/continuum/client-tabs/portfolio-tab'
-import { CreditTab } from '@/components/continuum/client-tabs/credit-tab'
+
 import { FamilyTab } from '@/components/continuum/client-tabs/family-tab'
 import { AdviceHistoryTab } from '@/components/continuum/client-tabs/advice-history-tab'
 import { RmNotesPanel } from '@/components/continuum/rm-notes-panel'
@@ -107,13 +106,19 @@ export default async function ClientPage({
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-          <TabsTrigger value="credit">Credit & Liquidity</TabsTrigger>
           <TabsTrigger value="notes">RM Notes</TabsTrigger>
           <TabsTrigger value="planning">Life & Planning</TabsTrigger>
           <TabsTrigger value="advice">Advice History</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="pt-5">
-          <OverviewTab insights={openInsights} objectives={client.objectives} />
+          <OverviewTab
+            clientId={client.client_id}
+            clientName={client.client_name}
+            insights={openInsights}
+            objectives={client.objectives}
+            recommendation={activeRecommendation}
+            evidence={activeRecommendationEvidence}
+          />
         </TabsContent>
         <TabsContent value="portfolio" className="pt-5">
           <PortfolioTab
@@ -123,9 +128,7 @@ export default async function ClientPage({
             collateralPortfolioIds={collateralPortfolioIds}
           />
         </TabsContent>
-        <TabsContent value="credit" className="pt-5">
-          <CreditTab facilities={creditFacilities} holdings={holdings} />
-        </TabsContent>
+
         <TabsContent value="notes" className="pt-5">
           <RmNotesPanel clientId={client.client_id} notes={rmNotes} />
         </TabsContent>
@@ -136,8 +139,6 @@ export default async function ClientPage({
           <AdviceHistoryTab items={adviceItems} />
         </TabsContent>
       </Tabs>
-
-      <RecommendationPanel clientId={client.client_id} recommendation={activeRecommendation} evidence={activeRecommendationEvidence} />
     </div>
   )
 }

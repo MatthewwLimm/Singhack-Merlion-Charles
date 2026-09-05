@@ -1,7 +1,11 @@
+'use client'
+
 import { cn } from '@/lib/utils'
 import { KeystoneInsight } from '../keystone-insight'
 import { SourceCitation } from '../source-citation'
+import { RecommendationPanel } from '../recommendation-panel'
 import type { InsightWithEvidence } from '@/services/insights'
+import type { InsightEvidence, Recommendation } from '@/lib/supabase/types'
 
 const SEVERITY_TONE: Record<InsightWithEvidence['severity'], 'critical' | 'warning' | 'default'> = {
   Critical: 'critical',
@@ -10,7 +14,23 @@ const SEVERITY_TONE: Record<InsightWithEvidence['severity'], 'critical' | 'warni
   Low: 'default',
 }
 
-export function OverviewTab({ insights, objectives }: { insights: InsightWithEvidence[]; objectives: string | null }) {
+interface OverviewTabProps {
+  clientId: string
+  clientName: string
+  insights: InsightWithEvidence[]
+  objectives: string | null
+  recommendation: Recommendation | null
+  evidence: InsightEvidence[]
+}
+
+export function OverviewTab({
+  clientId,
+  clientName,
+  insights,
+  objectives,
+  recommendation,
+  evidence,
+}: OverviewTabProps) {
   const concentrationInsight = insights.find((i) => i.insight_type === 'CONCENTRATION_RISK') ?? null
   const objectiveList = objectives
     ? objectives.split(';').map((o) => o.trim()).filter(Boolean)
@@ -22,13 +42,21 @@ export function OverviewTab({ insights, objectives }: { insights: InsightWithEvi
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section aria-labelledby="issues-heading" className="flex flex-col gap-3">
-          <h3 id="issues-heading" className="text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-            Current issues
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 id="issues-heading" className="text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+              Current issues
+            </h3>
+            {insights.length > 3 && (
+              <span className="text-[11px] font-medium text-muted-foreground">
+                Showing 3 of {insights.length}
+              </span>
+            )}
+          </div>
+
           {insights.length ? (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {insights.slice(0, 3).map((issue) => {
-                const tone = SEVERITY_TONE[issue.severity]
+                const tone = SEVERITY_TONE[issue.severity] ?? 'default'
                 return (
                   <article
                     key={issue.id}
@@ -74,8 +102,8 @@ export function OverviewTab({ insights, objectives }: { insights: InsightWithEvi
           </div>
           {objectiveList.length ? (
             <ol className="flex flex-col divide-y rounded-lg border bg-card">
-              {objectiveList.map((o) => (
-                <li key={o} className="px-4 py-3 text-xs font-medium text-foreground">
+              {objectiveList.map((o, idx) => (
+                <li key={`${o}-${idx}`} className="px-4 py-3 text-xs font-medium text-foreground">
                   {o}
                 </li>
               ))}
@@ -87,6 +115,13 @@ export function OverviewTab({ insights, objectives }: { insights: InsightWithEvi
           )}
         </section>
       </div>
+
+      <RecommendationPanel
+        clientId={clientId}
+        clientName={clientName}
+        recommendation={recommendation}
+        evidence={evidence}
+      />
     </div>
   )
 }
