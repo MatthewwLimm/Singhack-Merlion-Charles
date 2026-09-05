@@ -1,0 +1,11 @@
+project_id = "continuum"
+
+[db]
+port = 54322
+major_version = 17
+
+[api]
+port = 54321
+
+[studio]
+port = 54323
