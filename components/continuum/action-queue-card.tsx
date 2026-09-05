@@ -20,6 +20,54 @@ const statusStyles: Record<ActionStatus, string> = {
   Rejected: 'bg-muted text-muted-foreground border-border',
 }
 
+// Mini SVG Donut Chart Widget
+function MetricPieChart({ title }: { title: string }) {
+  const pctMatch = title.match(/(.+?)\s+(\d+)%/)
+
+  if (!pctMatch) return null
+
+  const label = pctMatch[1].trim()
+  const value = parseInt(pctMatch[2], 10)
+  const clampedValue = Math.min(Math.max(value, 0), 100)
+
+  // Donut SVG circumference calculation
+  const radius = 16
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (clampedValue / 100) * circumference
+
+  return (
+    <div className="flex items-center gap-3.5 rounded-lg border bg-muted/30 p-2.5">
+      <div className="relative flex size-11 shrink-0 items-center justify-center">
+        <svg className="size-full -rotate-90" viewBox="0 0 40 40">
+          <circle
+            cx="20"
+            cy="20"
+            r={radius}
+            className="stroke-muted fill-none stroke-[4]"
+          />
+          <circle
+            cx="20"
+            cy="20"
+            r={radius}
+            className="stroke-primary fill-none stroke-[4] transition-all duration-500"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute text-[10px] font-bold text-foreground">
+          {value}%
+        </span>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs font-semibold text-foreground">{label} Concentration</span>
+        <span className="text-[11px] text-muted-foreground">Portfolio Share</span>
+      </div>
+    </div>
+  )
+}
+
 export function ActionQueueCard({ recommendation }: { recommendation: RecommendationWithClient }) {
   const [open, setOpen] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
@@ -39,7 +87,10 @@ export function ActionQueueCard({ recommendation }: { recommendation: Recommenda
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Link href={`/clients/${recommendation.client_id}`} className="text-base font-semibold tracking-tight hover:underline underline-offset-4">
+              <Link
+                href={`/clients/${recommendation.client_id}`}
+                className="text-base font-semibold tracking-tight hover:underline underline-offset-4"
+              >
                 {recommendation.client_name}
               </Link>
               <PriorityBadge priority={toPriorityBadge(recommendation.priority)} size="sm" />
@@ -57,6 +108,9 @@ export function ActionQueueCard({ recommendation }: { recommendation: Recommenda
           </span>
         </div>
 
+        {/* Unique Mini Pie Chart visual */}
+        <MetricPieChart title={recommendation.title} />
+
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <FileTextIcon className="size-3" />
           {recommendation.recommendation}
@@ -70,7 +124,9 @@ export function ActionQueueCard({ recommendation }: { recommendation: Recommenda
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-          <p className="text-xs text-muted-foreground">Created {new Date(recommendation.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+          <p className="text-xs text-muted-foreground">
+            Created {new Date(recommendation.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+          </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               Review

@@ -25,7 +25,6 @@ interface PortfolioGaugeProps {
 export function PortfolioGauge({ title, data }: PortfolioGaugeProps) {
   if (!data || data.length === 0) return null
 
-  // Map colors on the client side
   const chartData = data.map((item) => ({
     ...item,
     color: getAssetColor(item.name),
@@ -34,23 +33,23 @@ export function PortfolioGauge({ title, data }: PortfolioGaugeProps) {
   const topAsset = [...chartData].sort((a, b) => b.value - a.value)[0]
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col items-center justify-center rounded-lg border bg-card p-5 text-card-foreground shadow-sm">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
 
-      <div className="relative h-40 w-full max-w-[280px]">
+      <div className="relative h-56 w-full max-w-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={chartData}
               cx="50%"
-              cy="85%"
-              startAngle={180}
-              endAngle={0}
-              innerRadius={60}
-              outerRadius={85}
-              paddingAngle={2}
+              cy="50%"
+              startAngle={90}
+              endAngle={-270}
+              innerRadius={65}
+              outerRadius={90}
+              paddingAngle={3}
               dataKey="value"
             >
               {chartData.map((entry, index) => (
@@ -73,11 +72,12 @@ export function PortfolioGauge({ title, data }: PortfolioGaugeProps) {
           </PieChart>
         </ResponsiveContainer>
 
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-center">
+        {/* Centered Donut Text */}
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <span className="text-3xl font-extrabold tracking-tight text-foreground">
             {topAsset?.value}%
           </span>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {topAsset?.name}
           </p>
         </div>

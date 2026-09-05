@@ -33,30 +33,33 @@ export function OverviewTab({ insights, objectives }: { insights: InsightWithEvi
                   <article
                     key={issue.id}
                     className={cn(
-                      'flex flex-col gap-2 rounded-md border bg-card p-4',
-                      tone === 'critical' && 'border-signal-critical/25',
+                      'flex flex-col justify-between gap-3 rounded-lg border bg-card p-4 transition-all hover:shadow-sm',
+                      tone === 'critical' && 'border-destructive/30 bg-destructive/5',
+                      tone === 'warning' && 'border-amber-500/30 bg-amber-500/5'
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-sm font-semibold text-pretty">{issue.title}</h4>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-xs font-bold leading-tight text-foreground">{issue.title}</h4>
+                        <span
+                          className={cn(
+                            'shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                            tone === 'critical' && 'bg-destructive/15 text-destructive',
+                            tone === 'warning' && 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+                            tone === 'default' && 'bg-secondary text-secondary-foreground'
+                          )}
+                        >
+                          {issue.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs leading-normal text-muted-foreground">{issue.summary}</p>
                     </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground text-pretty">{issue.summary}</p>
-                    <span
-                      className={cn(
-                        'mt-auto w-fit rounded-sm px-1.5 py-px text-[10px] font-semibold tracking-wide uppercase',
-                        tone === 'critical' && 'bg-signal-critical-muted text-signal-critical',
-                        tone === 'warning' && 'bg-signal-warning-muted text-signal-warning-foreground',
-                        tone === 'default' && 'bg-secondary text-secondary-foreground',
-                      )}
-                    >
-                      {issue.severity}
-                    </span>
                   </article>
                 )
               })}
             </div>
           ) : (
-            <p className="rounded-md border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
               No open issues for this client.
             </p>
           )}
@@ -70,15 +73,15 @@ export function OverviewTab({ insights, objectives }: { insights: InsightWithEvi
             <SourceCitation source="CRM" compact />
           </div>
           {objectiveList.length ? (
-            <ol className="flex flex-col divide-y rounded-md border bg-card">
+            <ol className="flex flex-col divide-y rounded-lg border bg-card">
               {objectiveList.map((o) => (
-                <li key={o} className="px-4 py-3 text-sm text-pretty">
+                <li key={o} className="px-4 py-3 text-xs font-medium text-foreground">
                   {o}
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="rounded-md border bg-card px-4 py-3 text-sm text-muted-foreground">
+            <p className="rounded-lg border bg-card px-4 py-3 text-xs text-muted-foreground">
               No objectives recorded.
             </p>
           )}
