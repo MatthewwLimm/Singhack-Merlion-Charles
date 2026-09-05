@@ -1,9 +1,8 @@
 import { LockIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SourceCitation } from '../source-citation'
-import { MandateComparison } from '../mandate-comparison'
-import { allocationByAssetClass, topHoldings, totalValueUsd } from '@/lib/portfolio-analytics'
+import { PortfolioGauge } from '@/components/continuum/allocation-charts'
+import { allocationByAssetClass, topHoldings } from '@/lib/portfolio-analytics'
 import type { HoldingWithInstrument, MandateAllocation, Portfolio } from '@/lib/supabase/types'
 import { formatMoney } from '@/lib/format'
 
@@ -20,39 +19,23 @@ export function PortfolioTab({
 }) {
   const primaryPortfolio = portfolios[0]
   const allocation = allocationByAssetClass(holdings)
-  const rows = allocation.map((a) => {
-    const rule = mandateAllocations.find((m) => m.asset_class === a.label)
-    return {
-      asset: a.label,
-      pct: Number(a.pct.toFixed(1)),
-      value: formatMoney(a.valueUsd),
-      target: rule ? `${rule.min_pct}–${rule.max_pct}%` : '0–100%',
-    }
-  })
+
+  const dynamicGaugeData = allocation.map((a) => ({
+    name: a.label,
+    value: Number(a.pct.toFixed(1)),
+  }))
+
   const top = topHoldings(holdings, 8)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
-      <section aria-labelledby="alloc-heading" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h3 id="alloc-heading" className="text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-            Allocation vs mandate
-          </h3>
-          <SourceCitation source="Holdings" compact />
-        </div>
-        <div className="rounded-md border bg-card p-4">
-          <p className="mb-4 text-xs text-muted-foreground">
-            Total holdings <span className="tabular font-medium text-foreground">{formatMoney(totalValueUsd(holdings))}</span>
-            {primaryPortfolio?.mandate_code ? ` · ${primaryPortfolio.mandate_code} mandate` : ''}
-          </p>
-          {rows.length ? (
-            <MandateComparison rows={rows} />
-          ) : (
-            <p className="text-sm text-muted-foreground">No holdings on record.</p>
-          )}
-        </div>
-      </section>
+    <div className="flex flex-col gap-6">
+      {/* Visual Asset Allocation Gauge */}
+      <PortfolioGauge
+        title={`${primaryPortfolio?.mandate_code ?? 'Client'} Asset Allocation`}
+        data={dynamicGaugeData}
+      />
 
+      {/* Largest Positions Table */}
       <section aria-labelledby="holdings-heading" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 id="holdings-heading" className="text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
