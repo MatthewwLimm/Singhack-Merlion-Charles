@@ -11,7 +11,7 @@ import { PriorityClientCard } from '@/components/continuum/priority-client-card'
 import { PageHeader } from '@/components/continuum/page-header'
 import { cn } from '@/lib/utils'
 import type { PriorityClient } from '@/lib/data'
-import { toAdviceStatus } from '@/lib/recommendation-display'
+import { toAdviceStatus, formatHandlingTime } from '@/lib/recommendation-display'
 import { getCockpitClients } from '@/services/cockpit'
 import { listRecommendations } from '@/services/recommendations'
 
@@ -51,6 +51,7 @@ export default async function MorningCockpitPage() {
       : undefined,
     nextAction: c.nextAction,
     domicile: c.client.country_of_residence ?? c.client.tax_domicile ?? '—',
+    avgHandlingTime: formatHandlingTime(c.avgHandlingTimeHours),
   }))
 
   const counts = {

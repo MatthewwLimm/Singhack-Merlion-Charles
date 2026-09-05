@@ -25,6 +25,7 @@ export function RecommendationPanel({
   const recommendationWithClient: RecommendationWithClient = {
     ...recommendation,
     client_name: clientName,
+    insight_type: null,
     evidence,
   }
 

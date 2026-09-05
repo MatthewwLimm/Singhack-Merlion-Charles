@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/server"
 import type {
+  InsightEvidence,
   InsightType,
   Recommendation,
   RecommendationEvent,
@@ -8,7 +9,11 @@ import type {
   RecommendationStatus,
 } from "@/lib/supabase/types"
 
-export type RecommendationWithClient = Recommendation & { client_name: string; insight_type: InsightType | null }
+export type RecommendationWithClient = Recommendation & {
+  client_name: string
+  insight_type: InsightType | null
+  evidence?: InsightEvidence[]
+}
 
 /** All recommendations across every client, for the Action Queue / Advice Ledger. */
 export async function listRecommendations(): Promise<RecommendationWithClient[]> {
@@ -124,6 +129,67 @@ export async function getEventsForRecommendations(
     ;(grouped[event.recommendation_id] ??= []).push(event)
   }
   return grouped
+}
+
+/**
+ * Average time from a recommendation's CREATED event to its first subsequent
+ * action (anything other than CREATED/NOTE), averaged per client across all
+ * of that client's recommendations — a proxy for how long this RM typically
+ * takes to act once a recommendation lands for a given client.
+ */
+export async function getAverageHandlingTimeByClient(): Promise<Map<string, number>> {
+  const supabase = getSupabaseClient()
+
+  const [{ data: recs, error: recsError }, { data: events, error: eventsError }] = await Promise.all([
+    supabase.from("recommendations").select("id, client_id"),
+    supabase
+      .from("recommendation_events")
+      .select("recommendation_id, event_type, created_at")
+      .order("created_at", { ascending: true }),
+  ])
+
+  if (recsError) throw new Error(`getAverageHandlingTimeByClient recommendations: ${recsError.message}`)
+  if (eventsError) throw new Error(`getAverageHandlingTimeByClient events: ${eventsError.message}`)
+
+  const clientByRecommendation = new Map<string, string>()
+  for (const r of recs as { id: string; client_id: string }[]) {
+    clientByRecommendation.set(r.id, r.client_id)
+  }
+
+  const eventsByRecommendation = new Map<string, { event_type: RecommendationEventType; created_at: string }[]>()
+  for (const e of events as { recommendation_id: string; event_type: RecommendationEventType; created_at: string }[]) {
+    const list = eventsByRecommendation.get(e.recommendation_id) ?? []
+    list.push(e)
+    eventsByRecommendation.set(e.recommendation_id, list)
+  }
+
+  const handlingHoursByClient = new Map<string, number[]>()
+
+  for (const [recommendationId, recEvents] of eventsByRecommendation) {
+    const clientId = clientByRecommendation.get(recommendationId)
+    if (!clientId) continue
+
+    const created = recEvents.find((e) => e.event_type === "CREATED")
+    if (!created) continue
+
+    const handled = recEvents.find(
+      (e) => e.created_at > created.created_at && e.event_type !== "CREATED" && e.event_type !== "NOTE",
+    )
+    if (!handled) continue
+
+    const hours = (new Date(handled.created_at).getTime() - new Date(created.created_at).getTime()) / 3_600_000
+    if (hours < 0) continue
+
+    const hoursList = handlingHoursByClient.get(clientId) ?? []
+    hoursList.push(hours)
+    handlingHoursByClient.set(clientId, hoursList)
+  }
+
+  const averageByClient = new Map<string, number>()
+  for (const [clientId, hours] of handlingHoursByClient) {
+    averageByClient.set(clientId, hours.reduce((a, b) => a + b, 0) / hours.length)
+  }
+  return averageByClient
 }
 
 export async function getRecommendationEvents(recommendationId: string): Promise<RecommendationEvent[]> {

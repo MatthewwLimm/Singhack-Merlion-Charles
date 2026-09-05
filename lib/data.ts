@@ -45,6 +45,7 @@ export interface PriorityClient {
   previousAdvice?: { status: AdviceStatus; date: string; summary: string }
   nextAction: string
   domicile: string
+  avgHandlingTime: string
 }
 
 export type ActionStatus = 'Awaiting Review' | 'Approved' | 'Deferred' | 'Completed' | 'Rejected'

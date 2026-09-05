@@ -10,6 +10,7 @@ import type { Priority } from "@/lib/types"
 import { getClientCreditFacilities } from "./credit"
 import { getClientHoldings } from "./portfolios"
 import { getClientPlannedCashNeeds } from "./planning"
+import { getAverageHandlingTimeByClient } from "./recommendations"
 import { concentrationByRegion } from "@/lib/portfolio-analytics"
 import type { SourceSystem } from "@/lib/data"
 
@@ -51,6 +52,7 @@ export interface CockpitClient {
   nextAction: string
   previousAdvice: { status: Recommendation["status"]; summary: string; date: string } | null
   primaryInsight: (Insight & { evidence: InsightEvidence[] }) | null
+  avgHandlingTimeHours: number | null
 }
 
 export function classifyPriority(severity: Insight["severity"] | null, hasOpenRecommendation: boolean): Priority | null {
@@ -110,15 +112,20 @@ async function buildEvidenceValues(clientId: string, insight: Insight): Promise<
 export async function getCockpitClients(): Promise<CockpitClient[]> {
   const supabase = getSupabaseClient()
 
-  const [{ data: clients, error: clientsError }, { data: insights, error: insightsError }, { data: recs, error: recsError }] =
-    await Promise.all([
-      supabase.from("clients").select("*"),
-      supabase.from("insights").select("*").eq("status", "OPEN"),
-      supabase
-        .from("recommendations")
-        .select("*")
-        .in("status", ["DRAFT", "READY_FOR_REVIEW", "APPROVED", "DEFERRED"]),
-    ])
+  const [
+    { data: clients, error: clientsError },
+    { data: insights, error: insightsError },
+    { data: recs, error: recsError },
+    avgHandlingTimeByClient,
+  ] = await Promise.all([
+    supabase.from("clients").select("*"),
+    supabase.from("insights").select("*").eq("status", "OPEN"),
+    supabase
+      .from("recommendations")
+      .select("*")
+      .in("status", ["DRAFT", "READY_FOR_REVIEW", "APPROVED", "DEFERRED"]),
+    getAverageHandlingTimeByClient(),
+  ])
 
   if (clientsError) throw new Error(`getCockpitClients clients: ${clientsError.message}`)
   if (insightsError) throw new Error(`getCockpitClients insights: ${insightsError.message}`)
@@ -171,6 +178,7 @@ export async function getCockpitClients(): Promise<CockpitClient[]> {
         ? { status: deferred.status, summary: deferred.title, date: new Date(deferred.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) }
         : null,
       primaryInsight: primaryInsightBase ? { ...primaryInsightBase, evidence: [] } : null,
+      avgHandlingTimeHours: avgHandlingTimeByClient.get(client.client_id) ?? null,
     })
   }
 

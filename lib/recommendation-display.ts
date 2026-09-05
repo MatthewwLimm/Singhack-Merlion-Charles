@@ -97,6 +97,13 @@ export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+export function formatHandlingTime(hours: number | null): string {
+  if (hours === null) return '—'
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours < 48) return `${hours.toFixed(1)}h`
+  return `${(hours / 24).toFixed(1)}d`
+}
+
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', {
     day: '2-digit',

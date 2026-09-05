@@ -72,15 +72,20 @@ export function PriorityClientCard({ client, rank }: { client: PriorityClient; r
             ) : null}
           </div>
 
-          <Button
-            variant={critical ? 'default' : 'outline'}
-            size="sm"
-            render={<Link href={href} />}
-            nativeButton={false}
-          >
-            Review Client
-            <ArrowRightIcon data-icon="inline-end" />
-          </Button>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <span className="tabular rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              Avg. handling time: {client.avgHandlingTime}
+            </span>
+            <Button
+              variant={critical ? 'default' : 'outline'}
+              size="lg"
+              render={<Link href={href} />}
+              nativeButton={false}
+            >
+              Review Client
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+          </div>
         </div>
       </div>
     </article>

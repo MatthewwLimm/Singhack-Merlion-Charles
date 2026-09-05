@@ -16,13 +16,19 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { SourceCitation } from './source-citation'
 import { SpecialistReviewBadge } from './specialist-review-badge'
 import {
   editRecommendationAction,
   transitionRecommendationAction,
+  sendRecommendationEmailAction,
 } from '@/app/clients/[id]/recommendation-actions'
 import type { RecommendationWithClient } from '@/services/recommendations'
+import type { RecommendationEventType } from '@/lib/supabase/types'
+
+// Stand-in for the client's personal email until real client contact data exists.
+const CLIENT_EMAIL_STANDIN = 'yantzer.haw.2025@smu.edu.sg'
 
 function sourceTableToSystem(table: string): import('@/lib/data').SourceSystem {
   const map: Record<string, import('@/lib/data').SourceSystem> = {
@@ -79,6 +85,12 @@ function getBehavioralGuidance(rec: RecommendationWithClient) {
   }
 }
 
+const COMPLETED_EVENT_LABEL: Record<'APPROVED' | 'CLIENT_DEFERRED' | 'CLIENT_REJECTED', string> = {
+  APPROVED: 'Approved',
+  CLIENT_DEFERRED: 'Deferred',
+  CLIENT_REJECTED: 'Rejected',
+}
+
 interface ActionReviewDrawerProps {
   recommendation: RecommendationWithClient | null
   open: boolean
@@ -95,11 +107,29 @@ export function ActionReviewDrawer({
   const [message, setMessage] = React.useState(recommendation?.recommendation ?? '')
   const [error, setError] = React.useState<string | null>(null)
 
+  type CompletedEventType = Extract<RecommendationEventType, 'APPROVED' | 'CLIENT_DEFERRED' | 'CLIENT_REJECTED'>
+  const [completedEvent, setCompletedEvent] = React.useState<CompletedEventType | null>(null)
+  const [emailTo, setEmailTo] = React.useState('')
+  const [emailStatus, setEmailStatus] = React.useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [emailError, setEmailError] = React.useState<string | null>(null)
+
   React.useEffect(() => {
     if (recommendation) {
       setMessage(recommendation.recommendation)
     }
   }, [recommendation])
+
+  // Keyed on the id (not the object reference) and `open`: approving/deferring/
+  // rejecting triggers a revalidatePath, which hands this component a new
+  // `recommendation` object for the SAME id right after we set completedEvent.
+  // Resetting on every object change would wipe that status before it's shown.
+  React.useEffect(() => {
+    setCompletedEvent(null)
+    setEmailTo('')
+    setEmailStatus('idle')
+    setEmailError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendation?.id, open])
 
   if (!recommendation) return null
 
@@ -122,9 +152,31 @@ export function ActionReviewDrawer({
     })
   }
 
-  function handleTransition(
-    eventType: 'RM_APPROVED' | 'CLIENT_DEFERRED' | 'CLIENT_REJECTED'
-  ) {
+  async function sendEmailFor(eventType: CompletedEventType, to: string) {
+    setEmailStatus('sending')
+    setEmailError(null)
+    try {
+      await sendRecommendationEmailAction({
+        to,
+        clientName: recommendation!.client_name,
+        recommendationTitle: recommendation!.title,
+        recommendationText: message,
+        rationale: recommendation!.rationale,
+        script: guidance.script,
+        evidence: evidenceList.map((e) => ({
+          description: e.description,
+          source: sourceTableToSystem(e.source_table),
+        })),
+        eventType,
+      })
+      setEmailStatus('sent')
+    } catch (err) {
+      setEmailStatus('error')
+      setEmailError(err instanceof Error ? err.message : 'Failed to send email.')
+    }
+  }
+
+  function handleTransition(eventType: CompletedEventType) {
     setError(null)
     startTransition(async () => {
       try {
@@ -133,10 +185,21 @@ export function ActionReviewDrawer({
           recommendation!.id,
           eventType
         )
-        onOpenChange(false)
+        setCompletedEvent(eventType)
+        if (eventType === 'APPROVED') {
+          setEmailTo(CLIENT_EMAIL_STANDIN)
+          await sendEmailFor(eventType, CLIENT_EMAIL_STANDIN)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to update action.')
       }
+    })
+  }
+
+  function handleSendEmail() {
+    if (!completedEvent) return
+    startTransition(async () => {
+      await sendEmailFor(completedEvent, emailTo)
     })
   }
 
@@ -299,38 +362,76 @@ export function ActionReviewDrawer({
           </p>
         </div>
 
-        {/* Footer Action Buttons */}
-        <div className="flex items-center justify-between gap-2 border-t bg-card p-4">
-          <Button
-            onClick={() => handleTransition('RM_APPROVED')}
-            disabled={pending}
-            className="flex-1 bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-          >
-            Approve
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setEditing((v) => !v)}
-            disabled={pending}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleTransition('CLIENT_DEFERRED')}
-            disabled={pending}
-          >
-            Defer
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleTransition('CLIENT_REJECTED')}
-            disabled={pending}
-            className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50"
-          >
-            Reject
-          </Button>
-        </div>
+        {/* Footer: action buttons, or the post-action email CTA */}
+        {completedEvent ? (
+          <div className="flex flex-col gap-3 border-t bg-card p-4">
+            <p className="text-sm font-medium text-foreground">
+              {COMPLETED_EVENT_LABEL[completedEvent]}
+              {completedEvent !== 'APPROVED' && ' — send an email about this action?'}
+            </p>
+            {completedEvent === 'APPROVED' ? (
+              <p className="text-sm text-muted-foreground">
+                {emailStatus === 'sending' && `Emailing ${emailTo}…`}
+                {emailStatus === 'sent' && (
+                  <span className="text-emerald-600 dark:text-emerald-400">Email sent to {emailTo}.</span>
+                )}
+                {emailStatus === 'error' && <span className="text-destructive">{emailError}</span>}
+              </p>
+            ) : emailStatus === 'sent' ? (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400">Email sent to {emailTo}.</p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="email"
+                  placeholder="recipient@example.com"
+                  value={emailTo}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailTo(e.target.value)}
+                  disabled={emailStatus === 'sending'}
+                  className="flex-1"
+                />
+                <Button onClick={handleSendEmail} disabled={emailStatus === 'sending' || !emailTo.trim()}>
+                  {emailStatus === 'sending' ? 'Sending…' : 'Send Email'}
+                </Button>
+              </div>
+            )}
+            {completedEvent !== 'APPROVED' && emailError && <p className="text-xs text-destructive">{emailError}</p>}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 border-t bg-card p-4">
+            <Button
+              onClick={() => handleTransition('APPROVED')}
+              disabled={pending}
+              className="flex-1 bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setEditing((v) => !v)}
+              disabled={pending}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleTransition('CLIENT_DEFERRED')}
+              disabled={pending}
+            >
+              Defer
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleTransition('CLIENT_REJECTED')}
+              disabled={pending}
+              className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50"
+            >
+              Reject
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   )
